@@ -117,7 +117,9 @@ GDSPY_ANCHOR = {"Top": "s", "Bottom": "n", "Left": "e", "Right": "w"}
 # ── GDS generation ─────────────────────────────────────────────────────────────
 
 def generate_gds(p):
-    lib  = gdspy.GdsLibrary()
+    # Reset gdspy's global library so reruns don't hit "cell already present"
+    gdspy.current_library = gdspy.GdsLibrary()
+    lib  = gdspy.current_library
     cell = lib.new_cell("MARKERS")
 
     outer      = p["outer_size"]
