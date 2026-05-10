@@ -66,18 +66,26 @@ with st.sidebar:
 
         placement = st.radio(
             "Placement",
-            ["One-sided", "All sides"],
+            ["One-sided", "All sides", "Series"],
             horizontal=True,
-            help="One-sided: 1 label on the top · All sides: 1 label on each of the 4 sides",
+            help="One-sided: 1 label on top of each marker · All sides: 1 label on each of the 4 sides · Series: multiple labels in a line along one side of each marker",
         )
+
+        series_count   = 1
+        series_spacing = 10.0
+        if placement == "Series":
+            series_count   = st.slider("Labels per marker", 2, 20, 5)
+            series_spacing = st.number_input("Spacing between labels (μm)", 1.0, 1000.0, float(outer_size / 5), 1.0)
 
         label_size = st.number_input("Text size (μm)", 1.0, 50.0, 8.0, 1.0)
     else:
-        label_type  = "1, 2, 3…"
-        prefix      = ""
-        custom_text = ""
-        placement   = "One-sided"
-        label_size  = 8.0
+        label_type     = "1, 2, 3…"
+        prefix         = ""
+        custom_text    = ""
+        placement      = "One-sided"
+        series_count   = 1
+        series_spacing = 10.0
+        label_size     = 8.0
 
 # ── Label helpers ──────────────────────────────────────────────────────────────
 
@@ -90,11 +98,9 @@ def _seq_letter(n):
         result = chr(ord("A") + r) + result
     return result
 
-def label_text_for(marker_idx, side_idx, p):
+def label_text_for(global_idx, p):
     lt  = p["label_type"]
-    per_side = p["placement"] == "All sides"
-    idx = marker_idx * 4 + side_idx if per_side else marker_idx
-
+    idx = global_idx
     if lt == "1, 2, 3…":
         return str(idx + 1)
     if lt == "A1, A2, A3…":
@@ -106,22 +112,27 @@ def label_text_for(marker_idx, side_idx, p):
     return ""
 
 
-# (x, y, ha, va, gds_anchor)
-_SIDE_TOP    = lambda cx, cy, h, lw: (cx,      cy+h+lw, "center", "bottom", "s")
-_SIDE_RIGHT  = lambda cx, cy, h, lw: (cx+h+lw, cy,      "left",   "center", "w")
-_SIDE_BOTTOM = lambda cx, cy, h, lw: (cx,      cy-h-lw, "center", "top",    "n")
-_SIDE_LEFT   = lambda cx, cy, h, lw: (cx-h-lw, cy,      "right",  "center", "e")
+def label_coords(cx, cy, outer, lw, p):
+    h   = outer / 2
+    top = cy + h + lw
 
-def label_coords(cx, cy, outer, lw, placement):
-    h = outer / 2
-    if placement == "One-sided":
-        return [_SIDE_TOP(cx, cy, h, lw)]
-    return [  # All sides
-        _SIDE_TOP(cx, cy, h, lw),
-        _SIDE_RIGHT(cx, cy, h, lw),
-        _SIDE_BOTTOM(cx, cy, h, lw),
-        _SIDE_LEFT(cx, cy, h, lw),
-    ]
+    if p["placement"] == "One-sided":
+        return [(cx, top, "center", "bottom", "s")]
+
+    if p["placement"] == "All sides":
+        return [
+            (cx,        top,        "center", "bottom", "s"),
+            (cx+h+lw,   cy,         "left",   "center", "w"),
+            (cx,        cy-h-lw,    "center", "top",    "n"),
+            (cx-h-lw,   cy,         "right",  "center", "e"),
+        ]
+
+    # Series: n labels spread horizontally above the marker
+    n       = p["series_count"]
+    spacing = p["series_spacing"]
+    total   = (n - 1) * spacing
+    x0      = cx - total / 2
+    return [(x0 + i * spacing, top, "center", "bottom", "s") for i in range(n)]
 
 # ── Geometry helpers ───────────────────────────────────────────────────────────
 
@@ -164,8 +175,8 @@ def generate_gds(p):
     arm   = p["arm_len"]
     lw    = p["line_width"]
 
-    positions  = []
-    marker_idx = 0
+    positions   = []
+    global_idx  = 0
     for r in range(p["num_rows"]):
         for c in range(p["num_cols"]):
             cx = c * p["pitch_x"]
@@ -178,16 +189,15 @@ def generate_gds(p):
                 add_corners_gdspy(cell, cx, cy, inner, arm, lw, p["layer_inner"])
 
             if p["label_layer"] != 0:
-                for side_idx, (lx, ly, _, _, anchor) in enumerate(
-                    label_coords(cx, cy, outer, lw, p["placement"])
-                ):
-                    txt = label_text_for(marker_idx, side_idx, p)
+                coords = label_coords(cx, cy, outer, lw, p)
+                for i, (lx, ly, _, _, anchor) in enumerate(coords):
+                    txt = label_text_for(global_idx + i, p)
                     cell.add(gdspy.Label(
                         txt, (lx, ly), anchor=anchor,
                         magnification=p["label_size"] / 4.0,
                         layer=p["label_layer"],
                     ))
-            marker_idx += 1
+                global_idx += len(coords)
 
     return lib, cell, positions, inner
 
@@ -202,7 +212,7 @@ def render(p, positions, inner_size):
     arm   = p["arm_len"]
     lw    = p["line_width"]
 
-    marker_idx = 0
+    global_idx = 0
     for cx, cy in positions:
         if p["layer_outer"] != 0:
             for x, y, w, h in corner_rects(cx, cy, outer, arm, lw):
@@ -213,15 +223,14 @@ def render(p, positions, inner_size):
                 ax.add_patch(patches.Rectangle((x, y), w, h, fc="#55ff55", ec="none", zorder=3))
 
         if p["label_layer"] != 0:
-            for side_idx, (lx, ly, ha, va, _) in enumerate(
-                label_coords(cx, cy, outer, lw, p["placement"])
-            ):
-                txt = label_text_for(marker_idx, side_idx, p)
+            coords = label_coords(cx, cy, outer, lw, p)
+            for i, (lx, ly, ha, va, _) in enumerate(coords):
+                txt = label_text_for(global_idx + i, p)
                 ax.text(lx, ly, txt, color="#ff4444",
                         fontsize=max(5, p["label_size"] * 0.6),
                         ha=ha, va=va,
                         fontfamily="monospace", fontweight="bold", zorder=4)
-        marker_idx += 1
+            global_idx += len(coords)
 
     ax.set_aspect("equal")
     ax.autoscale_view()
@@ -292,6 +301,7 @@ params = dict(
     label_layer=label_layer, label_type=label_type,
     prefix=prefix, custom_text=custom_text,
     placement=placement, label_size=label_size,
+    series_count=series_count, series_spacing=series_spacing,
 )
 
 lib, cell, positions, inner_size = generate_gds(params)
