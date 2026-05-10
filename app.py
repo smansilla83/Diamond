@@ -14,70 +14,53 @@ st.markdown("""
 <style>
 /* ── Base16 Monokai Light (beige) ── */
 :root {
-    --bg:       #f7f3eb;
-    --bg1:      #eee9de;
-    --bg2:      #e4decf;
-    --border:   #cdc7b8;
-    --text:     #3b3a32;
-    --muted:    #7a7560;
-    --red:      #f92672;
-    --orange:   #fd971f;
-    --green:    #8ab80a;
-    --cyan:     #3ba3b8;
-    --purple:   #ae81ff;
+    --bg:     #f7f3eb;
+    --bg1:    #eee9de;
+    --border: #cdc7b8;
+    --text:   #3b3a32;
+    --muted:  #7a7560;
+    --orange: #fd971f;
+    --red:    #f92672;
 }
 
-/* Main canvas */
-.stApp { background-color: var(--bg); color: var(--text); }
+/* Main canvas + sidebar */
+.stApp                          { background-color: var(--bg) !important; color: var(--text) !important; }
+[data-testid="stSidebar"]       { background-color: var(--bg1) !important; border-right: 1px solid var(--border); }
 
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background-color: var(--bg1);
-    border-right: 1px solid var(--border);
-}
-[data-testid="stSidebar"] * { color: var(--text) !important; }
+/* All text */
+*, p, label, span, div          { color: var(--text) !important; }
+h1, h2, h3, h4                  { font-weight: 600 !important; }
 
-/* Headers */
-h1, h2, h3, h4 { color: var(--text) !important; font-weight: 600; }
-.stApp h1 { border-bottom: 2px solid var(--orange); padding-bottom: 6px; }
-
-/* Inputs & selects */
-input, textarea, select,
-[data-testid="stNumberInput"] input,
-[data-testid="stTextInput"] input {
+/* Every input / textarea / select box */
+input, textarea,
+[data-baseweb="input"] input,
+[data-baseweb="select"] div,
+[data-baseweb="base-input"],
+[data-baseweb="base-input"] input,
+div[data-baseweb="popover"] li  {
     background-color: var(--bg) !important;
-    border: 1px solid var(--border) !important;
+    border-color: var(--border) !important;
     color: var(--text) !important;
-    border-radius: 4px !important;
 }
 
-/* Slider track */
-[data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {
-    background-color: var(--orange) !important;
-}
-[data-testid="stSlider"] div[data-testid="stTickBarMin"],
-[data-testid="stSlider"] div[data-testid="stTickBarMax"] {
-    color: var(--muted) !important;
-}
+/* Selectbox dropdown panel */
+[data-baseweb="menu"],
+[data-baseweb="popover"]        { background-color: var(--bg) !important; border: 1px solid var(--border) !important; }
 
-/* Radio & checkbox labels */
-[data-testid="stRadio"] label span,
-[data-testid="stCheckbox"] label span { color: var(--text) !important; }
-
-/* Active radio dot */
-[data-testid="stRadio"] input:checked + div { border-color: var(--orange) !important; }
-
-/* Tabs */
-[data-testid="stTabs"] button {
-    color: var(--muted) !important;
-    border-bottom: 2px solid transparent;
-}
-[data-testid="stTabs"] button[aria-selected="true"] {
-    color: var(--red) !important;
-    border-bottom: 2px solid var(--red) !important;
+/* Checkbox box */
+[data-testid="stCheckbox"] > label > div:first-child {
+    background-color: var(--bg) !important;
+    border-color: var(--border) !important;
 }
 
-/* Download / primary button */
+/* +/− stepper buttons on number inputs */
+[data-testid="stNumberInput"] button {
+    background-color: var(--bg1) !important;
+    border-color: var(--border) !important;
+    color: var(--text) !important;
+}
+
+/* Download / primary buttons */
 .stDownloadButton button, .stButton > button {
     background-color: var(--orange) !important;
     color: #fff !important;
@@ -87,16 +70,19 @@ input, textarea, select,
 }
 .stDownloadButton button:hover, .stButton > button:hover {
     background-color: var(--red) !important;
+    color: #fff !important;
 }
 
-/* Divider */
-hr { border-color: var(--border) !important; }
+/* Tabs */
+[data-testid="stTabs"] button            { color: var(--muted) !important; }
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color: var(--red) !important;
+    border-bottom-color: var(--red) !important;
+}
 
-/* Caption / small text */
-.stCaptionContainer, small { color: var(--muted) !important; }
-
-/* Dataframe */
-[data-testid="stDataFrame"] { border: 1px solid var(--border); border-radius: 4px; }
+/* Divider / caption */
+hr                              { border-color: var(--border) !important; }
+[data-testid="stCaptionContainer"] { color: var(--muted) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -316,8 +302,8 @@ C_LABEL  = "#ff1010"   # vivid red labels
 
 def render(p, positions, inner_size):
     fig, ax = plt.subplots(figsize=(10, 7))
-    ax.set_facecolor("none")
-    fig.patch.set_facecolor("none")
+    ax.set_facecolor(C_BG)
+    fig.patch.set_facecolor(C_BG)
 
     outer = p["outer_size"]
     arm   = p["arm_len"]
@@ -349,11 +335,11 @@ def render(p, positions, inner_size):
     pad = outer * 0.6
     ax.set_xlim(xl[0] - pad, xl[1] + pad)
     ax.set_ylim(yl[0] - pad, yl[1] + pad)
-    ax.set_xlabel("X (μm)", color="#3b3a32", fontsize=9)
-    ax.set_ylabel("Y (μm)", color="#3b3a32", fontsize=9)
-    ax.tick_params(colors="#3b3a32", labelsize=8)
+    ax.set_xlabel("X (μm)", color="white", fontsize=9)
+    ax.set_ylabel("Y (μm)", color="white", fontsize=9)
+    ax.tick_params(colors="white", labelsize=8)
     for spine in ax.spines.values():
-        spine.set_color("#cdc7b8")
+        spine.set_color("white")
 
     legend = []
     if p["layer_outer"] != 0:
@@ -362,8 +348,8 @@ def render(p, positions, inner_size):
         legend.append(patches.Patch(color=C_INNER, label=f"Layer {p['layer_inner']} – inner"))
     if legend:
         ax.legend(handles=legend, loc="upper right",
-                  facecolor="#f7f3eb", edgecolor="#cdc7b8", labelcolor="#3b3a32", fontsize=8)
-    ax.set_title("Marker Preview", color="#3b3a32", fontsize=11, pad=8)
+                  facecolor=C_BG, edgecolor="white", labelcolor="white", fontsize=8)
+    ax.set_title("Marker Preview", color="white", fontsize=11, pad=8)
     return fig
 
 # ── KLayout measurements ───────────────────────────────────────────────────────
