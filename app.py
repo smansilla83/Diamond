@@ -94,7 +94,7 @@ hr                              { border-color: var(--border) !important; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Alignment Marker Generator")
+st.title("Diamond Marker Generator")
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
