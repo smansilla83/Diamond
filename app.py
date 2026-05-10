@@ -23,10 +23,13 @@ st.markdown("""
     --red:    #f92672;
 }
 
-/* Hide Streamlit top toolbar/header */
-[data-testid="stToolbar"],
+/* Header bar — vivid blue */
 [data-testid="stHeader"],
-#MainMenu, header                { display: none !important; }
+header                          { background-color: #4169e1 !important; border-bottom: none !important; }
+[data-testid="stToolbar"] *,
+header *                        { color: #ffffff !important; }
+[data-testid="stToolbar"] button,
+header button                   { background-color: transparent !important; border-color: rgba(255,255,255,0.3) !important; }
 
 /* Main canvas + sidebar */
 .stApp                          { background-color: var(--bg) !important; color: var(--text) !important; }
