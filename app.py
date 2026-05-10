@@ -15,30 +15,44 @@ st.title("Alignment Marker Generator")
 with st.sidebar:
     st.header("Parameters")
 
+    st.subheader("Layers")
+    st.caption("Set to 0 to hide a layer.")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        layer_outer = int(st.number_input("Outer", 0, 255, 1))
+    with col2:
+        layer_inner = int(st.number_input("Inner", 0, 255, 2))
+    with col3:
+        layer_label = int(st.number_input("Labels", 0, 255, 10))
+
+    st.divider()
+
     num_rows = st.slider("Rows", 1, 8, 2)
     num_cols = st.slider("Columns", 1, 8, 3)
 
     outer_size = st.number_input("Outer square size (μm)", 10.0, 2000.0, 100.0, 5.0)
-    set_diff   = st.number_input(
-        "Set difference (μm)", 1.0, float(outer_size / 2 - 1), 15.0, 1.0,
-        help="Inset from outer square to inner corner brackets",
-    )
-    arm_len   = st.number_input("Corner arm length (μm)", 2.0, float(outer_size / 2), 20.0, 1.0)
+    if layer_inner != 0:
+        set_diff = st.number_input(
+            "Set difference (μm)", 1.0, float(outer_size / 2 - 1), 15.0, 1.0,
+            help="Inset from outer square to inner corner brackets",
+        )
+    else:
+        set_diff = 15.0
+    arm_len    = st.number_input("Corner arm length (μm)", 2.0, float(outer_size / 2), 20.0, 1.0)
     line_width = st.number_input("Line width (μm)", 0.1, 20.0, 3.0, 0.5)
 
     pitch_x = st.number_input("Pitch X (μm)", 10.0, 10000.0, float(outer_size * 2), 10.0)
     pitch_y = st.number_input("Pitch Y (μm)", 10.0, 10000.0, float(outer_size * 2), 10.0)
 
     st.divider()
-    label_type = st.selectbox(
-        "Labels", ["Alphanumeric (A1, B2…)", "Numbers only", "Letters only", "None"]
-    )
-    label_size = st.number_input("Label size (μm)", 1.0, 50.0, 8.0, 1.0)
-
-    st.divider()
-    layer_outer = int(st.number_input("Outer layer", 0, 255, 1))
-    layer_inner = int(st.number_input("Inner layer", 0, 255, 2))
-    layer_label = int(st.number_input("Label layer", 0, 255, 10))
+    if layer_label != 0:
+        label_type = st.selectbox(
+            "Labels", ["Alphanumeric (A1, B2…)", "Numbers only", "Letters only", "None"]
+        )
+        label_size = st.number_input("Label size (μm)", 1.0, 50.0, 8.0, 1.0)
+    else:
+        label_type = "None"
+        label_size = 8.0
 
 # ── Geometry helpers ───────────────────────────────────────────────────────────
 
@@ -107,12 +121,13 @@ def generate_gds(p):
             cy = -r * py
             positions.append((r, c, cx, cy))
 
-            add_corners_gdspy(cell, cx, cy, outer, arm, lw, p["layer_outer"])
-            if inner > arm * 2:
+            if p["layer_outer"] != 0:
+                add_corners_gdspy(cell, cx, cy, outer, arm, lw, p["layer_outer"])
+            if p["layer_inner"] != 0 and inner > arm * 2:
                 add_corners_gdspy(cell, cx, cy, inner, arm, lw, p["layer_inner"])
 
             lbl = marker_label(r, c, p["label_type"])
-            if lbl:
+            if lbl and p["layer_label"] != 0:
                 cell.add(gdspy.Label(
                     lbl, (cx - outer / 2 - lw, cy + outer / 2),
                     anchor="se",
@@ -137,15 +152,16 @@ def render(p, positions, inner_size):
     c_lbl = "#ff4444"
 
     for r, c, cx, cy in positions:
-        for x, y, w, h in corner_rects(cx, cy, outer, arm, lw):
-            ax.add_patch(patches.Rectangle((x, y), w, h, fc=c_out, ec="none", zorder=2))
+        if p["layer_outer"] != 0:
+            for x, y, w, h in corner_rects(cx, cy, outer, arm, lw):
+                ax.add_patch(patches.Rectangle((x, y), w, h, fc=c_out, ec="none", zorder=2))
 
-        if inner_size > arm * 2:
+        if p["layer_inner"] != 0 and inner_size > arm * 2:
             for x, y, w, h in corner_rects(cx, cy, inner_size, arm, lw):
                 ax.add_patch(patches.Rectangle((x, y), w, h, fc=c_in, ec="none", zorder=3))
 
         lbl = marker_label(r, c, p["label_type"])
-        if lbl:
+        if lbl and p["layer_label"] != 0:
             ax.text(
                 cx - outer / 2 - lw * 0.5, cy + outer / 2 + lw,
                 lbl, color=c_lbl,
@@ -168,11 +184,14 @@ def render(p, positions, inner_size):
     for spine in ax.spines.values():
         spine.set_color("#444466")
 
-    legend = [patches.Patch(color=c_out, label=f"Layer {p['layer_outer']} – outer")]
-    if inner_size > arm * 2:
+    legend = []
+    if p["layer_outer"] != 0:
+        legend.append(patches.Patch(color=c_out, label=f"Layer {p['layer_outer']} – outer"))
+    if p["layer_inner"] != 0 and inner_size > arm * 2:
         legend.append(patches.Patch(color=c_in, label=f"Layer {p['layer_inner']} – inner"))
-    ax.legend(handles=legend, loc="upper right",
-              facecolor="#1a1a2e", edgecolor="#444466", labelcolor="white", fontsize=8)
+    if legend:
+        ax.legend(handles=legend, loc="upper right",
+                  facecolor="#1a1a2e", edgecolor="#444466", labelcolor="white", fontsize=8)
     ax.set_title("Marker Preview", color="white", fontsize=11, pad=8)
     return fig
 
