@@ -66,9 +66,9 @@ with st.sidebar:
 
         placement = st.radio(
             "Placement",
-            ["Per marker", "One-sided"],
+            ["One-sided", "All sides"],
             horizontal=True,
-            help="Per marker: one label above · One-sided: labels along one side of the marker",
+            help="One-sided: 1 label on the top · All sides: 1 label on each of the 4 sides",
         )
 
         label_size = st.number_input("Text size (μm)", 1.0, 50.0, 8.0, 1.0)
@@ -76,7 +76,7 @@ with st.sidebar:
         label_type  = "1, 2, 3…"
         prefix      = ""
         custom_text = ""
-        placement   = "Per marker"
+        placement   = "One-sided"
         label_size  = 8.0
 
 # ── Label helpers ──────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ def _seq_letter(n):
 
 def label_text_for(marker_idx, side_idx, p):
     lt  = p["label_type"]
-    per_side = p["placement"] == "One-sided"
+    per_side = p["placement"] == "All sides"
     idx = marker_idx * 4 + side_idx if per_side else marker_idx
 
     if lt == "1, 2, 3…":
@@ -114,9 +114,9 @@ _SIDE_LEFT   = lambda cx, cy, h, lw: (cx-h-lw, cy,      "right",  "center", "e")
 
 def label_coords(cx, cy, outer, lw, placement):
     h = outer / 2
-    if placement == "Per marker":
+    if placement == "One-sided":
         return [_SIDE_TOP(cx, cy, h, lw)]
-    return [  # One-sided: all 4 sides
+    return [  # All sides
         _SIDE_TOP(cx, cy, h, lw),
         _SIDE_RIGHT(cx, cy, h, lw),
         _SIDE_BOTTOM(cx, cy, h, lw),
