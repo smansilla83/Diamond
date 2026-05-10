@@ -77,6 +77,19 @@ with st.sidebar:
             series_count   = st.slider("Labels per marker", 2, 20, 5)
             series_spacing = st.number_input("Spacing between labels (μm)", 1.0, 1000.0, float(outer_size / 5), 1.0)
 
+        # Which markers get labels
+        total_markers  = num_rows * num_cols
+        apply_to_all   = st.checkbox("Apply to all markers", value=True)
+        if apply_to_all:
+            label_marker = -1  # -1 = all
+        else:
+            marker_options = {
+                f"Marker {r*num_cols+c+1}  (row {r+1}, col {c+1})": r*num_cols+c
+                for r in range(num_rows) for c in range(num_cols)
+            }
+            chosen = st.selectbox("Apply to marker", list(marker_options.keys()))
+            label_marker = marker_options[chosen]
+
         label_size = st.number_input("Text size (μm)", 1.0, 50.0, 8.0, 1.0)
     else:
         label_type     = "1, 2, 3…"
@@ -85,6 +98,7 @@ with st.sidebar:
         placement      = "One-sided"
         series_count   = 1
         series_spacing = 10.0
+        label_marker   = -1
         label_size     = 8.0
 
 # ── Label helpers ──────────────────────────────────────────────────────────────
@@ -188,7 +202,8 @@ def generate_gds(p):
             if p["layer_inner"] != 0 and inner > arm * 2:
                 add_corners_gdspy(cell, cx, cy, inner, arm, lw, p["layer_inner"])
 
-            if p["label_layer"] != 0:
+            marker_num = r * p["num_cols"] + c
+            if p["label_layer"] != 0 and (p["label_marker"] == -1 or p["label_marker"] == marker_num):
                 coords = label_coords(cx, cy, outer, lw, p)
                 for i, (lx, ly, _, _, anchor) in enumerate(coords):
                     txt = label_text_for(global_idx + i, p)
@@ -213,7 +228,7 @@ def render(p, positions, inner_size):
     lw    = p["line_width"]
 
     global_idx = 0
-    for cx, cy in positions:
+    for idx, (cx, cy) in enumerate(positions):
         if p["layer_outer"] != 0:
             for x, y, w, h in corner_rects(cx, cy, outer, arm, lw):
                 ax.add_patch(patches.Rectangle((x, y), w, h, fc="#ff5555", ec="none", zorder=2))
@@ -222,7 +237,8 @@ def render(p, positions, inner_size):
             for x, y, w, h in corner_rects(cx, cy, inner_size, arm, lw):
                 ax.add_patch(patches.Rectangle((x, y), w, h, fc="#55ff55", ec="none", zorder=3))
 
-        if p["label_layer"] != 0:
+        marker_num = idx
+        if p["label_layer"] != 0 and (p["label_marker"] == -1 or p["label_marker"] == marker_num):
             coords = label_coords(cx, cy, outer, lw, p)
             for i, (lx, ly, ha, va, _) in enumerate(coords):
                 txt = label_text_for(global_idx + i, p)
@@ -302,6 +318,7 @@ params = dict(
     prefix=prefix, custom_text=custom_text,
     placement=placement, label_size=label_size,
     series_count=series_count, series_spacing=series_spacing,
+    label_marker=label_marker,
 )
 
 lib, cell, positions, inner_size = generate_gds(params)
@@ -328,5 +345,8 @@ with tab2:
 
 os.unlink(tmp.name)
 
-st.download_button("⬇ Download GDS", gds_bytes, "markers.gds",
+gds_filename = st.text_input("GDS file name", "markers") .strip() or "markers"
+if not gds_filename.endswith(".gds"):
+    gds_filename += ".gds"
+st.download_button("⬇ Download GDS", gds_bytes, gds_filename,
                    mime="application/octet-stream", type="primary")
