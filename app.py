@@ -19,13 +19,11 @@ with st.sidebar:
     st.subheader("Layers")
     col1, col2 = st.columns(2)
     with col1:
-        use_outer   = st.checkbox("Outer", value=True)
-        layer_outer = int(st.number_input("Layer#", 0, 255, 1, key="lo",
-                                           label_visibility="collapsed")) if use_outer else 0
+        use_outer = st.checkbox("Outer", value=True)
     with col2:
-        use_inner   = st.checkbox("Inner", value=True)
-        layer_inner = int(st.number_input("Layer#", 0, 255, 2, key="li",
-                                           label_visibility="collapsed")) if use_inner else 0
+        use_inner = st.checkbox("Inner", value=True)
+    layer_outer = 1 if use_outer else 0
+    layer_inner = 2 if use_inner else 0
 
     st.divider()
 
@@ -68,9 +66,9 @@ with st.sidebar:
 
         placement = st.radio(
             "Placement",
-            ["Per marker", "Per side"],
+            ["Per marker", "One-sided"],
             horizontal=True,
-            help="Per marker: one label above · Per side: one label on each of the 4 sides",
+            help="Per marker: one label above · One-sided: labels along one side of the marker",
         )
 
         label_size = st.number_input("Text size (μm)", 1.0, 50.0, 8.0, 1.0)
@@ -94,7 +92,7 @@ def _seq_letter(n):
 
 def label_text_for(marker_idx, side_idx, p):
     lt  = p["label_type"]
-    per_side = p["placement"] == "Per side"
+    per_side = p["placement"] == "One-sided"
     idx = marker_idx * 4 + side_idx if per_side else marker_idx
 
     if lt == "1, 2, 3…":
@@ -118,7 +116,7 @@ def label_coords(cx, cy, outer, lw, placement):
     h = outer / 2
     if placement == "Per marker":
         return [_SIDE_TOP(cx, cy, h, lw)]
-    return [
+    return [  # One-sided: all 4 sides
         _SIDE_TOP(cx, cy, h, lw),
         _SIDE_RIGHT(cx, cy, h, lw),
         _SIDE_BOTTOM(cx, cy, h, lw),
