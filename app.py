@@ -9,6 +9,97 @@ import os
 import pandas as pd
 
 st.set_page_config(page_title="Marker Generator", layout="wide", page_icon="⬜")
+
+st.markdown("""
+<style>
+/* ── Base16 Monokai Light (beige) ── */
+:root {
+    --bg:       #f7f3eb;
+    --bg1:      #eee9de;
+    --bg2:      #e4decf;
+    --border:   #cdc7b8;
+    --text:     #3b3a32;
+    --muted:    #7a7560;
+    --red:      #f92672;
+    --orange:   #fd971f;
+    --green:    #8ab80a;
+    --cyan:     #3ba3b8;
+    --purple:   #ae81ff;
+}
+
+/* Main canvas */
+.stApp { background-color: var(--bg); color: var(--text); }
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: var(--bg1);
+    border-right: 1px solid var(--border);
+}
+[data-testid="stSidebar"] * { color: var(--text) !important; }
+
+/* Headers */
+h1, h2, h3, h4 { color: var(--text) !important; font-weight: 600; }
+.stApp h1 { border-bottom: 2px solid var(--orange); padding-bottom: 6px; }
+
+/* Inputs & selects */
+input, textarea, select,
+[data-testid="stNumberInput"] input,
+[data-testid="stTextInput"] input {
+    background-color: var(--bg) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    border-radius: 4px !important;
+}
+
+/* Slider track */
+[data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {
+    background-color: var(--orange) !important;
+}
+[data-testid="stSlider"] div[data-testid="stTickBarMin"],
+[data-testid="stSlider"] div[data-testid="stTickBarMax"] {
+    color: var(--muted) !important;
+}
+
+/* Radio & checkbox labels */
+[data-testid="stRadio"] label span,
+[data-testid="stCheckbox"] label span { color: var(--text) !important; }
+
+/* Active radio dot */
+[data-testid="stRadio"] input:checked + div { border-color: var(--orange) !important; }
+
+/* Tabs */
+[data-testid="stTabs"] button {
+    color: var(--muted) !important;
+    border-bottom: 2px solid transparent;
+}
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color: var(--red) !important;
+    border-bottom: 2px solid var(--red) !important;
+}
+
+/* Download / primary button */
+.stDownloadButton button, .stButton > button {
+    background-color: var(--orange) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+}
+.stDownloadButton button:hover, .stButton > button:hover {
+    background-color: var(--red) !important;
+}
+
+/* Divider */
+hr { border-color: var(--border) !important; }
+
+/* Caption / small text */
+.stCaptionContainer, small { color: var(--muted) !important; }
+
+/* Dataframe */
+[data-testid="stDataFrame"] { border: 1px solid var(--border); border-radius: 4px; }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("Alignment Marker Generator")
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -218,10 +309,15 @@ def generate_gds(p):
 
 # ── Preview ────────────────────────────────────────────────────────────────────
 
+C_BG     = "#4169e1"   # royal blue background (like reference)
+C_OUTER  = "#ff2020"   # vivid red
+C_INNER  = "#3ddd3d"   # vivid green
+C_LABEL  = "#ff1010"   # vivid red labels
+
 def render(p, positions, inner_size):
     fig, ax = plt.subplots(figsize=(10, 7))
-    ax.set_facecolor("#1a1a2e")
-    fig.patch.set_facecolor("#16213e")
+    ax.set_facecolor(C_BG)
+    fig.patch.set_facecolor(C_BG)
 
     outer = p["outer_size"]
     arm   = p["arm_len"]
@@ -231,18 +327,17 @@ def render(p, positions, inner_size):
     for idx, (cx, cy) in enumerate(positions):
         if p["layer_outer"] != 0:
             for x, y, w, h in corner_rects(cx, cy, outer, arm, lw):
-                ax.add_patch(patches.Rectangle((x, y), w, h, fc="#ff5555", ec="none", zorder=2))
+                ax.add_patch(patches.Rectangle((x, y), w, h, fc=C_OUTER, ec="none", zorder=2))
 
         if p["layer_inner"] != 0 and inner_size > arm * 2:
             for x, y, w, h in corner_rects(cx, cy, inner_size, arm, lw):
-                ax.add_patch(patches.Rectangle((x, y), w, h, fc="#55ff55", ec="none", zorder=3))
+                ax.add_patch(patches.Rectangle((x, y), w, h, fc=C_INNER, ec="none", zorder=3))
 
-        marker_num = idx
-        if p["label_layer"] != 0 and (p["label_marker"] == -1 or p["label_marker"] == marker_num):
+        if p["label_layer"] != 0 and (p["label_marker"] == -1 or p["label_marker"] == idx):
             coords = label_coords(cx, cy, outer, lw, p)
             for i, (lx, ly, ha, va, _) in enumerate(coords):
                 txt = label_text_for(global_idx + i, p)
-                ax.text(lx, ly, txt, color="#ff4444",
+                ax.text(lx, ly, txt, color=C_LABEL,
                         fontsize=max(5, p["label_size"] * 0.6),
                         ha=ha, va=va,
                         fontfamily="monospace", fontweight="bold", zorder=4)
@@ -254,20 +349,20 @@ def render(p, positions, inner_size):
     pad = outer * 0.6
     ax.set_xlim(xl[0] - pad, xl[1] + pad)
     ax.set_ylim(yl[0] - pad, yl[1] + pad)
-    ax.set_xlabel("X (μm)", color="#aaaacc", fontsize=9)
-    ax.set_ylabel("Y (μm)", color="#aaaacc", fontsize=9)
-    ax.tick_params(colors="#aaaacc", labelsize=8)
+    ax.set_xlabel("X (μm)", color="white", fontsize=9)
+    ax.set_ylabel("Y (μm)", color="white", fontsize=9)
+    ax.tick_params(colors="white", labelsize=8)
     for spine in ax.spines.values():
-        spine.set_color("#444466")
+        spine.set_color("white")
 
     legend = []
     if p["layer_outer"] != 0:
-        legend.append(patches.Patch(color="#ff5555", label=f"Layer {p['layer_outer']} – outer"))
+        legend.append(patches.Patch(color=C_OUTER, label=f"Layer {p['layer_outer']} – outer"))
     if p["layer_inner"] != 0 and inner_size > arm * 2:
-        legend.append(patches.Patch(color="#55ff55", label=f"Layer {p['layer_inner']} – inner"))
+        legend.append(patches.Patch(color=C_INNER, label=f"Layer {p['layer_inner']} – inner"))
     if legend:
         ax.legend(handles=legend, loc="upper right",
-                  facecolor="#1a1a2e", edgecolor="#444466", labelcolor="white", fontsize=8)
+                  facecolor=C_BG, edgecolor="white", labelcolor="white", fontsize=8)
     ax.set_title("Marker Preview", color="white", fontsize=11, pad=8)
     return fig
 
