@@ -316,8 +316,8 @@ C_LABEL  = "#ff1010"   # vivid red labels
 
 def render(p, positions, inner_size):
     fig, ax = plt.subplots(figsize=(10, 7))
-    ax.set_facecolor(C_BG)
-    fig.patch.set_facecolor(C_BG)
+    ax.set_facecolor("none")
+    fig.patch.set_facecolor("none")
 
     outer = p["outer_size"]
     arm   = p["arm_len"]
@@ -349,11 +349,11 @@ def render(p, positions, inner_size):
     pad = outer * 0.6
     ax.set_xlim(xl[0] - pad, xl[1] + pad)
     ax.set_ylim(yl[0] - pad, yl[1] + pad)
-    ax.set_xlabel("X (μm)", color="white", fontsize=9)
-    ax.set_ylabel("Y (μm)", color="white", fontsize=9)
-    ax.tick_params(colors="white", labelsize=8)
+    ax.set_xlabel("X (μm)", color="#3b3a32", fontsize=9)
+    ax.set_ylabel("Y (μm)", color="#3b3a32", fontsize=9)
+    ax.tick_params(colors="#3b3a32", labelsize=8)
     for spine in ax.spines.values():
-        spine.set_color("white")
+        spine.set_color("#cdc7b8")
 
     legend = []
     if p["layer_outer"] != 0:
@@ -362,8 +362,8 @@ def render(p, positions, inner_size):
         legend.append(patches.Patch(color=C_INNER, label=f"Layer {p['layer_inner']} – inner"))
     if legend:
         ax.legend(handles=legend, loc="upper right",
-                  facecolor=C_BG, edgecolor="white", labelcolor="white", fontsize=8)
-    ax.set_title("Marker Preview", color="white", fontsize=11, pad=8)
+                  facecolor="#f7f3eb", edgecolor="#cdc7b8", labelcolor="#3b3a32", fontsize=8)
+    ax.set_title("Marker Preview", color="#3b3a32", fontsize=11, pad=8)
     return fig
 
 # ── KLayout measurements ───────────────────────────────────────────────────────
